@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
-  ComposedChart,
   LineChart,
   Line, 
-  Bar, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -326,16 +324,16 @@ const Dashboard: React.FC = () => {
       {/* 2. Biểu đồ & Xếp hạng */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6">
         
-        {/* Biểu đồ MACD: Tương quan Lead & Đơn hàng */}
+        {/* Biểu đồ MACD: Tương quan Lead & Đơn hàng - Chỉ đường line */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-[400px]">
           <div className="mb-4">
             <h3 className="text-lg font-bold text-slate-700">Tương quan Lead & Đơn hàng (MACD)</h3>
             <p className="text-xs text-slate-500 mt-1">2 đường di chuyển và cắt nhau theo thời gian</p>
           </div>
           <ResponsiveContainer width="100%" height="calc(100% - 50px)">
-            <ComposedChart 
+            <LineChart 
               data={macdChartData} 
-              margin={{ top: 10, right: 20, left: 0, bottom: 5 }}
+              margin={{ top: 10, right: 20, left: 10, bottom: 5 }}
             >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
               <XAxis 
@@ -344,13 +342,6 @@ const Dashboard: React.FC = () => {
                 axisLine={{ stroke: '#cbd5e1' }}
               />
               <YAxis 
-                yAxisId="left"
-                tick={{ fill: '#64748b', fontSize: 12 }}
-                axisLine={{ stroke: '#cbd5e1' }}
-              />
-              <YAxis 
-                yAxisId="right"
-                orientation="right"
                 tick={{ fill: '#64748b', fontSize: 12 }}
                 axisLine={{ stroke: '#cbd5e1' }}
               />
@@ -362,8 +353,11 @@ const Dashboard: React.FC = () => {
                   backgroundColor: 'white'
                 }}
                 formatter={(value: any, name: string) => {
-                  if (name === 'leadMA' || name === 'orderMA') {
-                    return [value.toFixed(1), name === 'leadMA' ? 'Lead MA (3 ngày)' : 'Đơn MA (3 ngày)'];
+                  if (name === 'leadMA') {
+                    return [value.toFixed(1), 'Lead MA (3 ngày)'];
+                  }
+                  if (name === 'orderMA') {
+                    return [value.toFixed(1), 'Đơn MA (3 ngày)'];
                   }
                   return [value, name === 'leads' ? 'Số Lead' : 'Số Đơn'];
                 }}
@@ -373,66 +367,74 @@ const Dashboard: React.FC = () => {
                 iconType="line"
               />
               
-              {/* Bar chart for actual values */}
-              <Bar 
-                yAxisId="left"
-                dataKey="leads" 
-                fill="#94a3b8" 
-                name="Số Lead" 
-                radius={[2, 2, 0, 0]} 
-                barSize={15}
-                opacity={0.3}
-              />
-              <Bar 
-                yAxisId="left"
-                dataKey="orders" 
-                fill="#3b82f6" 
-                name="Số Đơn" 
-                radius={[2, 2, 0, 0]} 
-                barSize={15}
-                opacity={0.3}
+              {/* Đường Lead - Giá trị thực */}
+              <Line
+                type="monotone"
+                dataKey="leads"
+                stroke="#94a3b8"
+                strokeWidth={2}
+                dot={{ fill: '#94a3b8', r: 3, strokeWidth: 2 }}
+                activeDot={{ r: 5 }}
+                name="Số Lead"
+                strokeDasharray="5 5"
+                opacity={0.6}
               />
               
-              {/* MACD Lines - Moving Averages that cross each other */}
+              {/* Đường Đơn hàng - Giá trị thực */}
               <Line
-                yAxisId="right"
+                type="monotone"
+                dataKey="orders"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                dot={{ fill: '#3b82f6', r: 3, strokeWidth: 2 }}
+                activeDot={{ r: 5 }}
+                name="Số Đơn"
+                strokeDasharray="5 5"
+                opacity={0.6}
+              />
+              
+              {/* MACD Lines - Moving Averages (đường chính, đậm hơn) */}
+              <Line
                 type="monotone"
                 dataKey="leadMA"
                 stroke="#ef4444"
                 strokeWidth={3}
-                dot={{ fill: '#ef4444', r: 4 }}
-                activeDot={{ r: 6 }}
-                name="Lead MA"
+                dot={{ fill: '#ef4444', r: 5, strokeWidth: 2, stroke: '#fff' }}
+                activeDot={{ r: 7 }}
+                name="Lead MA (3 ngày)"
               />
               <Line
-                yAxisId="right"
                 type="monotone"
                 dataKey="orderMA"
                 stroke="#10b981"
                 strokeWidth={3}
-                dot={{ fill: '#10b981', r: 4 }}
-                activeDot={{ r: 6 }}
-                name="Đơn MA"
+                dot={{ fill: '#10b981', r: 5, strokeWidth: 2, stroke: '#fff' }}
+                activeDot={{ r: 7 }}
+                name="Đơn MA (3 ngày)"
               />
               
               {/* Reference line at 0 for better visualization */}
-              <ReferenceLine yAxisId="right" y={0} stroke="#cbd5e1" strokeDasharray="2 2" />
-            </ComposedChart>
+              <ReferenceLine y={0} stroke="#cbd5e1" strokeDasharray="2 2" />
+            </LineChart>
           </ResponsiveContainer>
           
           {/* Legend explanation */}
-          <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">
+          <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-red-500 rounded"></div>
-              <span>Đường Lead MA (đỏ)</span>
+              <div className="w-4 h-0.5 bg-red-500"></div>
+              <span className="font-medium">Đường Lead MA (đỏ, đậm)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-green-500 rounded"></div>
-              <span>Đường Đơn MA (xanh)</span>
+              <div className="w-4 h-0.5 bg-green-500"></div>
+              <span className="font-medium">Đường Đơn MA (xanh, đậm)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-1.5 bg-slate-400 opacity-30"></div>
-              <span>Cột giá trị thực</span>
+              <div className="w-4 h-0.5 bg-slate-400 border-dashed border border-slate-400"></div>
+              <span>Đường Lead thực (xám, nét đứt)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-4 h-0.5 bg-blue-500 border-dashed border border-blue-500"></div>
+              <span>Đường Đơn thực (xanh, nét đứt)</span>
             </div>
           </div>
         </div>
