@@ -12,13 +12,24 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MOCK_EMPLOYEES } from '../constants';
-import { EmployeeStatus } from '../types';
+import { EmployeeStatus, Employee } from '../types';
+import { createEmployee } from '../services/firebaseService';
 
 const HRManagement: React.FC = () => {
   const navigate = useNavigate();
   const [employees, setEmployees] = useState(MOCK_EMPLOYEES);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('All');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newEmployee, setNewEmployee] = useState({
+    name: '',
+    position: '',
+    department: '',
+    phone: '',
+    email: '',
+    joinDate: new Date().toISOString().split('T')[0],
+    status: EmployeeStatus.ACTIVE
+  });
 
   const departments = ['All', ...Array.from(new Set(MOCK_EMPLOYEES.map(e => e.department)))];
 
@@ -44,7 +55,10 @@ const HRManagement: React.FC = () => {
                 <p className="text-slate-500 text-sm">Danh sách nhân viên và trạng thái làm việc</p>
              </div>
          </div>
-         <button className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-blue-600 shadow-sm transition-colors">
+         <button 
+           onClick={() => setIsAddModalOpen(true)}
+           className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-blue-600 shadow-sm transition-colors"
+         >
             <UserPlus size={18} /> Thêm nhân viên
          </button>
       </div>
@@ -155,6 +169,164 @@ const HRManagement: React.FC = () => {
             </tbody>
         </table>
       </div>
+
+      {/* Add New Employee Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-[600px] max-w-[90vw] p-6 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <UserPlus className="text-accent" />
+              Thêm nhân viên mới
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Họ và tên *</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                  value={newEmployee.name}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
+                  placeholder="Nhập họ và tên"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Chức vụ *</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={newEmployee.position}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
+                    placeholder="Ví dụ: Sale Executive"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Phòng ban *</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={newEmployee.department}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, department: e.target.value })}
+                    placeholder="Ví dụ: Kinh Doanh"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Số điện thoại</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={newEmployee.phone}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
+                    placeholder="Nhập số điện thoại"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={newEmployee.email}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
+                    placeholder="email@company.com"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Ngày vào làm</label>
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={newEmployee.joinDate}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, joinDate: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Trạng thái</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={newEmployee.status}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, status: e.target.value as EmployeeStatus })}
+                  >
+                    {Object.values(EmployeeStatus).map(status => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setIsAddModalOpen(false);
+                  setNewEmployee({
+                    name: '',
+                    position: '',
+                    department: '',
+                    phone: '',
+                    email: '',
+                    joinDate: new Date().toISOString().split('T')[0],
+                    status: EmployeeStatus.ACTIVE
+                  });
+                }}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={async () => {
+                  if (!newEmployee.name || !newEmployee.position || !newEmployee.department) {
+                    alert('Vui lòng điền đầy đủ thông tin!');
+                    return;
+                  }
+                  
+                  const employee: Employee = {
+                    id: `NV${String(employees.length + 1).padStart(3, '0')}`,
+                    name: newEmployee.name,
+                    position: newEmployee.position,
+                    department: newEmployee.department,
+                    phone: newEmployee.phone,
+                    email: newEmployee.email,
+                    joinDate: newEmployee.joinDate,
+                    status: newEmployee.status,
+                    avatar: newEmployee.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                  };
+
+                  try {
+                    await createEmployee(employee);
+                    setIsAddModalOpen(false);
+                    setNewEmployee({
+                      name: '',
+                      position: '',
+                      department: '',
+                      phone: '',
+                      email: '',
+                      joinDate: new Date().toISOString().split('T')[0],
+                      status: EmployeeStatus.ACTIVE
+                    });
+                    // Refresh employees
+                    window.location.reload();
+                  } catch (error) {
+                    console.error('Error creating employee:', error);
+                    alert('Có lỗi xảy ra khi thêm nhân viên!');
+                  }
+                }}
+                disabled={!newEmployee.name || !newEmployee.position || !newEmployee.department}
+                className="px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Thêm mới
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

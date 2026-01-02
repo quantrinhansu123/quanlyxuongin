@@ -319,6 +319,36 @@ export async function getEmployees(): Promise<Employee[]> {
   }
 }
 
+export async function createEmployee(employee: Employee): Promise<void> {
+  try {
+    const firebaseData = {
+      ten: employee.name,
+      chuc_vu: employee.position,
+      phong_ban: employee.department,
+      so_dien_thoai: employee.phone,
+      email: employee.email,
+      ngay_vao_lam: employee.joinDate,
+      trang_thai: mapEmployeeStatusToFirebase(employee.status),
+      avatar: employee.avatar,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    await set(ref(db, `nhan_vien/${employee.id}`), firebaseData);
+  } catch (error) {
+    console.error('Error creating employee:', error);
+    throw error;
+  }
+}
+
+function mapEmployeeStatusToFirebase(status: EmployeeStatus): string {
+  const statusMap: Record<EmployeeStatus, string> = {
+    [EmployeeStatus.ACTIVE]: 'Dang lam viec',
+    [EmployeeStatus.LEAVE]: 'Nghi phep',
+    [EmployeeStatus.RESIGNED]: 'Da nghi viec'
+  };
+  return statusMap[status] || 'Dang lam viec';
+}
+
 // Design Orders
 export async function getDesignOrders(): Promise<DesignOrder[]> {
   try {
@@ -331,6 +361,38 @@ export async function getDesignOrders(): Promise<DesignOrder[]> {
     console.error('Error fetching design orders:', error);
     return [];
   }
+}
+
+export async function createDesignOrder(order: DesignOrder): Promise<void> {
+  try {
+    const firebaseData = {
+      ten_khach_hang: order.customerName,
+      so_dien_thoai: order.phone,
+      loai_san_pham: order.productType,
+      yeu_cau: order.requirements,
+      nhan_vien_thiet_ke_id: order.designer === 'Chưa phân bổ' ? null : order.designer,
+      trang_thai: mapDesignOrderStatusToFirebase(order.status),
+      doanh_thu: order.revenue,
+      han_hoan_thanh: order.deadline,
+      created_at: order.createdAt,
+      updated_at: new Date().toISOString()
+    };
+    await set(ref(db, `don_thiet_ke/${order.id}`), firebaseData);
+  } catch (error) {
+    console.error('Error creating design order:', error);
+    throw error;
+  }
+}
+
+function mapDesignOrderStatusToFirebase(status: DesignOrderStatus): string {
+  const statusMap: Record<DesignOrderStatus, string> = {
+    [DesignOrderStatus.PENDING]: 'Cho xu ly',
+    [DesignOrderStatus.IN_PROGRESS]: 'Dang thiet ke',
+    [DesignOrderStatus.REVIEW]: 'Cho duyet',
+    [DesignOrderStatus.COMPLETED]: 'Hoan thanh',
+    [DesignOrderStatus.CANCELLED]: 'Huy'
+  };
+  return statusMap[status] || 'Cho xu ly';
 }
 
 // Sale Allocations

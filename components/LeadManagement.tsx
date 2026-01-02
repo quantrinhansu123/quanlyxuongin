@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Lead, LeadStatus } from '../types';
 import { useLeads, useReferenceData } from '../hooks/useFirebaseData';
-import { updateLead, deleteLead } from '../services/firebaseService';
+import { updateLead, deleteLead, createLead } from '../services/firebaseService';
 
 // --- Helper Component: MultiSelect Dropdown ---
 interface MultiSelectProps {
@@ -129,6 +129,18 @@ const LeadManagement: React.FC = () => {
   const [selectedLeadForCall, setSelectedLeadForCall] = useState<Lead | null>(null);
   const [newCallNote, setNewCallNote] = useState('');
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+  
+  // Add New Lead Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newLead, setNewLead] = useState({
+    name: '',
+    phone: '',
+    group: customerGroups[0] || '',
+    source: leadSources[0] || '',
+    sourceName: '',
+    saleName: saleAgents[0] || '',
+    note: ''
+  });
 
   // Update timer every second
   useEffect(() => {
@@ -277,15 +289,75 @@ const LeadManagement: React.FC = () => {
     setFilterCallCounts([]);
   };
 
+  // Generate new Lead ID
+  const generateLeadId = () => {
+    if (leads.length === 0) return 'KH001';
+    const ids = leads.map(l => {
+      const num = parseInt(l.id.replace('KH', ''));
+      return isNaN(num) ? 0 : num;
+    });
+    const maxId = Math.max(...ids);
+    return `KH${String(maxId + 1).padStart(3, '0')}`;
+  };
+
+  // Handle Add New Lead
+  const handleAddLead = async () => {
+    if (!newLead.name || !newLead.phone) {
+      alert('Vui lòng điền đầy đủ thông tin!');
+      return;
+    }
+
+    const lead: Lead = {
+      id: generateLeadId(),
+      name: newLead.name,
+      phone: newLead.phone,
+      group: newLead.group,
+      source: newLead.source,
+      sourceName: newLead.sourceName,
+      saleName: newLead.saleName,
+      callLog: { count: 0, content: '' },
+      note: newLead.note,
+      status: LeadStatus.NEW,
+      isOrderCreated: false,
+      assignedAt: new Date().toISOString(),
+      processedAt: undefined
+    };
+
+    try {
+      await createLead(lead);
+      setIsAddModalOpen(false);
+      setNewLead({
+        name: '',
+        phone: '',
+        group: customerGroups[0] || '',
+        source: leadSources[0] || '',
+        sourceName: '',
+        saleName: saleAgents[0] || '',
+        note: ''
+      });
+    } catch (error) {
+      console.error('Error creating lead:', error);
+      alert('Có lỗi xảy ra khi tạo khách hàng mới!');
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   };
 
   return (
     <div className="p-6 h-screen overflow-y-auto flex flex-col">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-800 mb-2">Hộp chờ tư vấn</h2>
-        <p className="text-slate-500 text-sm">Quản lý và chuyển đổi khách hàng tiềm năng</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Hộp chờ tư vấn</h2>
+          <p className="text-slate-500 text-sm">Quản lý và chuyển đổi khách hàng tiềm năng</p>
+        </div>
+        <button
+          onClick={() => setIsAddModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-blue-600 shadow-sm transition-colors"
+        >
+          <PlusCircle size={18} /> Thêm khách hàng mới
+        </button>
       </div>
 
       {/* Control Panel */}
@@ -544,6 +616,132 @@ const LeadManagement: React.FC = () => {
                 className="px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Lưu & Cập nhật
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add New Lead Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-[600px] max-w-[90vw] p-6 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <PlusCircle className="text-accent" />
+              Thêm khách hàng mới
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Họ và tên *</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                  value={newLead.name}
+                  onChange={(e) => setNewLead({ ...newLead, name: e.target.value })}
+                  placeholder="Nhập họ và tên"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Số điện thoại *</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                  value={newLead.phone}
+                  onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })}
+                  placeholder="Nhập số điện thoại"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Nhóm khách hàng</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={newLead.group}
+                    onChange={(e) => setNewLead({ ...newLead, group: e.target.value })}
+                  >
+                    {customerGroups.map(group => (
+                      <option key={group} value={group}>{group}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Nguồn</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={newLead.source}
+                    onChange={(e) => setNewLead({ ...newLead, source: e.target.value })}
+                  >
+                    {leadSources.map(source => (
+                      <option key={source} value={source}>{source}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Tên nguồn cụ thể</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                  value={newLead.sourceName}
+                  onChange={(e) => setNewLead({ ...newLead, sourceName: e.target.value })}
+                  placeholder="Ví dụ: Fanpage ABC, Group XYZ..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nhân viên Sale</label>
+                <select
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                  value={newLead.saleName}
+                  onChange={(e) => setNewLead({ ...newLead, saleName: e.target.value })}
+                >
+                  {saleAgents.map(agent => (
+                    <option key={agent} value={agent}>{agent}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Ghi chú</label>
+                <textarea
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none resize-none"
+                  rows={3}
+                  value={newLead.note}
+                  onChange={(e) => setNewLead({ ...newLead, note: e.target.value })}
+                  placeholder="Nhập ghi chú (nếu có)"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setIsAddModalOpen(false);
+                  setNewLead({
+                    name: '',
+                    phone: '',
+                    group: customerGroups[0] || '',
+                    source: leadSources[0] || '',
+                    sourceName: '',
+                    saleName: saleAgents[0] || '',
+                    note: ''
+                  });
+                }}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={handleAddLead}
+                disabled={!newLead.name || !newLead.phone}
+                className="px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Thêm mới
               </button>
             </div>
           </div>

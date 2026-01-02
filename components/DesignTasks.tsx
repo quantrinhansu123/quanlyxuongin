@@ -14,11 +14,21 @@ import {
 } from 'lucide-react';
 import { DesignOrder, DesignOrderStatus } from '../types';
 import { MOCK_DESIGN_ORDERS } from '../constants';
+import { createDesignOrder } from '../services/firebaseService';
 
 const DesignTasks: React.FC = () => {
   const [orders, setOrders] = useState<DesignOrder[]>(MOCK_DESIGN_ORDERS);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('All');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newOrder, setNewOrder] = useState({
+    customerName: '',
+    phone: '',
+    productType: '',
+    requirements: '',
+    revenue: 0,
+    deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  });
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -75,7 +85,10 @@ const DesignTasks: React.FC = () => {
                 <p className="text-slate-500 text-sm">Quản lý đơn hàng & Yêu cầu của khách</p>
             </div>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-blue-600 shadow-sm transition-colors">
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-blue-600 shadow-sm transition-colors"
+        >
             <PlusCircle size={18} /> Tạo yêu cầu mới
         </button>
       </div>
@@ -205,6 +218,149 @@ const DesignTasks: React.FC = () => {
              </table>
          </div>
       </div>
+
+      {/* Add New Design Order Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-[600px] max-w-[90vw] p-6 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <PlusCircle className="text-accent" />
+              Tạo yêu cầu thiết kế mới
+            </h3>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Tên khách hàng *</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={newOrder.customerName}
+                    onChange={(e) => setNewOrder({ ...newOrder, customerName: e.target.value })}
+                    placeholder="Nhập tên khách hàng"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Số điện thoại *</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={newOrder.phone}
+                    onChange={(e) => setNewOrder({ ...newOrder, phone: e.target.value })}
+                    placeholder="Nhập số điện thoại"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Loại sản phẩm *</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                  value={newOrder.productType}
+                  onChange={(e) => setNewOrder({ ...newOrder, productType: e.target.value })}
+                  placeholder="Ví dụ: Logo, Banner, Menu..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Yêu cầu / Ghi chú *</label>
+                <textarea
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none resize-none"
+                  rows={4}
+                  value={newOrder.requirements}
+                  onChange={(e) => setNewOrder({ ...newOrder, requirements: e.target.value })}
+                  placeholder="Mô tả yêu cầu thiết kế..."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Doanh thu (VNĐ)</label>
+                  <input
+                    type="number"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={newOrder.revenue}
+                    onChange={(e) => setNewOrder({ ...newOrder, revenue: parseInt(e.target.value) || 0 })}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Hạn hoàn thành</label>
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={newOrder.deadline}
+                    onChange={(e) => setNewOrder({ ...newOrder, deadline: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setIsAddModalOpen(false);
+                  setNewOrder({
+                    customerName: '',
+                    phone: '',
+                    productType: '',
+                    requirements: '',
+                    revenue: 0,
+                    deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                  });
+                }}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={async () => {
+                  if (!newOrder.customerName || !newOrder.phone || !newOrder.productType || !newOrder.requirements) {
+                    alert('Vui lòng điền đầy đủ thông tin!');
+                    return;
+                  }
+                  
+                  const order: DesignOrder = {
+                    id: `DH${Date.now()}`,
+                    customerName: newOrder.customerName,
+                    phone: newOrder.phone,
+                    productType: newOrder.productType,
+                    requirements: newOrder.requirements,
+                    designer: 'Chưa phân bổ',
+                    status: DesignOrderStatus.PENDING,
+                    revenue: newOrder.revenue,
+                    deadline: new Date(newOrder.deadline).toISOString(),
+                    createdAt: new Date().toISOString()
+                  };
+
+                  try {
+                    await createDesignOrder(order);
+                    setIsAddModalOpen(false);
+                    setNewOrder({
+                      customerName: '',
+                      phone: '',
+                      productType: '',
+                      requirements: '',
+                      revenue: 0,
+                      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                    });
+                    // Refresh orders
+                    window.location.reload();
+                  } catch (error) {
+                    console.error('Error creating design order:', error);
+                    alert('Có lỗi xảy ra khi tạo yêu cầu thiết kế!');
+                  }
+                }}
+                disabled={!newOrder.customerName || !newOrder.phone || !newOrder.productType || !newOrder.requirements}
+                className="px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Tạo mới
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
