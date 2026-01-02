@@ -17,8 +17,8 @@ dist-ssr
 .env.local
 .env.*.local
 
-# Firebase config (chứa API keys)
-firebase-realtime.config.ts
+# Firebase config - Chỉ ignore file local nếu có API keys thật
+# firebase-realtime.config.ts
 firebase.config.ts
 
 # Editor directories and files
