@@ -1,13 +1,16 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
-  BarChart, 
+  ComposedChart,
+  LineChart,
+  Line, 
   Bar, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
   Legend, 
-  ResponsiveContainer 
+  ResponsiveContainer,
+  ReferenceLine
 } from 'recharts';
 import { 
   Search, 
@@ -27,6 +30,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { LEAD_SOURCES, SALE_AGENTS, CUSTOMER_GROUPS } from '../constants';
 import { LeadStatus } from '../types';
+import { useLeads, useOrders } from '../hooks/useFirebaseData';
 
 // --- Helper: MultiSelect Dropdown ---
 interface MultiSelectProps {
@@ -179,16 +183,61 @@ const Dashboard: React.FC = () => {
   const top3Sales = sortedByRevenue.slice(0, 3);
   const bottom3Sales = sortedByRevenue.slice(-3).reverse();
 
-  // --- Chart Data ---
-  const chartData = [
-    { name: 'T2', leads: 45, orders: 20 },
-    { name: 'T3', leads: 32, orders: 15 },
-    { name: 'T4', leads: 28, orders: 12 },
-    { name: 'T5', leads: 36, orders: 22 },
-    { name: 'T6', leads: 40, orders: 18 },
-    { name: 'T7', leads: 52, orders: 30 },
-    { name: 'CN', leads: 48, orders: 28 },
-  ];
+  // Get real data from Firebase
+  const { leads } = useLeads();
+  const { orders } = useOrders();
+
+  // Calculate MACD-style chart data (Lead vs Orders over time)
+  const macdChartData = useMemo(() => {
+    // Group by date (last 7 days)
+    const days = 7;
+    const today = new Date();
+    const data: Array<{ name: string; date: string; leads: number; orders: number; leadMA: number; orderMA: number }> = [];
+    
+    // Calculate data for last 7 days
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayName = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][date.getDay()];
+      
+      // Count leads created on this date
+      const dayLeads = leads.filter(lead => {
+        const leadDate = new Date(lead.assignedAt).toISOString().split('T')[0];
+        return leadDate === dateStr;
+      }).length;
+      
+      // Count orders created on this date
+      const dayOrders = orders.filter(order => {
+        const orderDate = new Date(order.createdAt).toISOString().split('T')[0];
+        return orderDate === dateStr;
+      }).length;
+      
+      data.push({
+        name: dayName,
+        date: dateStr,
+        leads: dayLeads,
+        orders: dayOrders,
+        leadMA: 0, // Will calculate moving average
+        orderMA: 0
+      });
+    }
+    
+    // Calculate Moving Averages (3-day MA for MACD effect)
+    const maPeriod = 3;
+    for (let i = 0; i < data.length; i++) {
+      const start = Math.max(0, i - maPeriod + 1);
+      const end = i + 1;
+      const leadSum = data.slice(start, end).reduce((sum, d) => sum + d.leads, 0);
+      const orderSum = data.slice(start, end).reduce((sum, d) => sum + d.orders, 0);
+      const count = end - start;
+      
+      data[i].leadMA = count > 0 ? Math.round(leadSum / count * 10) / 10 : data[i].leads;
+      data[i].orderMA = count > 0 ? Math.round(orderSum / count * 10) / 10 : data[i].orders;
+    }
+    
+    return data;
+  }, [leads, orders]);
 
   const handleResetFilters = () => {
     setSearchQuery('');
@@ -277,20 +326,115 @@ const Dashboard: React.FC = () => {
       {/* 2. Biểu đồ & Xếp hạng */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6">
         
-        {/* Biểu đồ số Lead và số đơn */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-[350px]">
-          <h3 className="text-lg font-bold mb-4 text-slate-700">Tương quan Lead & Đơn hàng</h3>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-              <Legend />
-              <Bar dataKey="leads" fill="#94a3b8" name="Số Lead" radius={[4, 4, 0, 0]} barSize={20} />
-              <Bar dataKey="orders" fill="#3b82f6" name="Số Đơn" radius={[4, 4, 0, 0]} barSize={20} />
-            </BarChart>
+        {/* Biểu đồ MACD: Tương quan Lead & Đơn hàng */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-[400px]">
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-slate-700">Tương quan Lead & Đơn hàng (MACD)</h3>
+            <p className="text-xs text-slate-500 mt-1">2 đường di chuyển và cắt nhau theo thời gian</p>
+          </div>
+          <ResponsiveContainer width="100%" height="calc(100% - 50px)">
+            <ComposedChart 
+              data={macdChartData} 
+              margin={{ top: 10, right: 20, left: 0, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+              <XAxis 
+                dataKey="name" 
+                tick={{ fill: '#64748b', fontSize: 12 }}
+                axisLine={{ stroke: '#cbd5e1' }}
+              />
+              <YAxis 
+                yAxisId="left"
+                tick={{ fill: '#64748b', fontSize: 12 }}
+                axisLine={{ stroke: '#cbd5e1' }}
+              />
+              <YAxis 
+                yAxisId="right"
+                orientation="right"
+                tick={{ fill: '#64748b', fontSize: 12 }}
+                axisLine={{ stroke: '#cbd5e1' }}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  borderRadius: '8px', 
+                  border: '1px solid #e2e8f0', 
+                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                  backgroundColor: 'white'
+                }}
+                formatter={(value: any, name: string) => {
+                  if (name === 'leadMA' || name === 'orderMA') {
+                    return [value.toFixed(1), name === 'leadMA' ? 'Lead MA (3 ngày)' : 'Đơn MA (3 ngày)'];
+                  }
+                  return [value, name === 'leads' ? 'Số Lead' : 'Số Đơn'];
+                }}
+              />
+              <Legend 
+                wrapperStyle={{ paddingTop: '10px' }}
+                iconType="line"
+              />
+              
+              {/* Bar chart for actual values */}
+              <Bar 
+                yAxisId="left"
+                dataKey="leads" 
+                fill="#94a3b8" 
+                name="Số Lead" 
+                radius={[2, 2, 0, 0]} 
+                barSize={15}
+                opacity={0.3}
+              />
+              <Bar 
+                yAxisId="left"
+                dataKey="orders" 
+                fill="#3b82f6" 
+                name="Số Đơn" 
+                radius={[2, 2, 0, 0]} 
+                barSize={15}
+                opacity={0.3}
+              />
+              
+              {/* MACD Lines - Moving Averages that cross each other */}
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="leadMA"
+                stroke="#ef4444"
+                strokeWidth={3}
+                dot={{ fill: '#ef4444', r: 4 }}
+                activeDot={{ r: 6 }}
+                name="Lead MA"
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="orderMA"
+                stroke="#10b981"
+                strokeWidth={3}
+                dot={{ fill: '#10b981', r: 4 }}
+                activeDot={{ r: 6 }}
+                name="Đơn MA"
+              />
+              
+              {/* Reference line at 0 for better visualization */}
+              <ReferenceLine yAxisId="right" y={0} stroke="#cbd5e1" strokeDasharray="2 2" />
+            </ComposedChart>
           </ResponsiveContainer>
+          
+          {/* Legend explanation */}
+          <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 bg-red-500 rounded"></div>
+              <span>Đường Lead MA (đỏ)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 bg-green-500 rounded"></div>
+              <span>Đường Đơn MA (xanh)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-1.5 bg-slate-400 opacity-30"></div>
+              <span>Cột giá trị thực</span>
+            </div>
+          </div>
         </div>
 
         {/* Bảng xếp hạng */}
