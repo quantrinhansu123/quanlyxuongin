@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Cho phép đọc/ghi nếu đã authenticate
+    // Bạn có thể điều chỉnh rules theo nhu cầu bảo mật
+    
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Hoặc mở rộng cho development (không khuyến khích cho production)
+    // match /{document=**} {
+    //   allow read, write: if true;
+    // }
+  }
+}
+

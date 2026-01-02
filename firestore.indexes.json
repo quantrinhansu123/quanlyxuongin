@@ -1,0 +1,62 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "khach_hang",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "nhan_vien_ban_hang_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "trang_thai",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "khach_hang",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "trang_thai",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ngay_phan_cong",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "don_hang",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "trang_thai",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "don_thiet_ke",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "trang_thai",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nhan_vien_thiet_ke_id",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
+
