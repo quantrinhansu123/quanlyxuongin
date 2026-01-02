@@ -354,9 +354,9 @@ const LeadManagement: React.FC = () => {
         </div>
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-blue-600 shadow-sm transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-accent text-white rounded-lg hover:bg-blue-600 shadow-md hover:shadow-lg transition-all font-medium"
         >
-          <PlusCircle size={18} /> Thêm khách hàng mới
+          <PlusCircle size={20} /> Thêm khách hàng mới
         </button>
       </div>
 
@@ -375,6 +375,12 @@ const LeadManagement: React.FC = () => {
             />
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-blue-600 shadow-sm transition-colors"
+            >
+              <PlusCircle size={16} /> Thêm mới
+            </button>
              <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
               <Download size={16} /> Xuất Excel
             </button>
