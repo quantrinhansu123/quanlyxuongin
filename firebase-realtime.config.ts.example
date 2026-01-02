@@ -1,0 +1,23 @@
+// Firebase Realtime Database Configuration
+// Copy file này thành firebase-realtime.config.ts và điền thông tin của bạn
+
+import { initializeApp } from 'firebase/app';
+import { getDatabase } from 'firebase/database';
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY", // Lấy từ Firebase Console > Project Settings > Your apps > Web app
+  authDomain: "quanlyxuongin-d18cc.firebaseapp.com",
+  databaseURL: "https://quanlyxuongin-d18cc-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "quanlyxuongin-d18cc",
+  storageBucket: "quanlyxuongin-d18cc.appspot.com",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // Lấy từ Firebase Console
+  appId: "YOUR_APP_ID" // Lấy từ Firebase Console
+};
+
+// Khởi tạo Firebase
+const app = initializeApp(firebaseConfig);
+
+// Khởi tạo Realtime Database
+export const db = getDatabase(app);
+export default app;
+
