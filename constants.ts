@@ -1,7 +1,7 @@
 import { Lead, LeadStatus, SaleAllocation, DesignItem, Employee, EmployeeStatus, DesignOrder, DesignOrderStatus, Order, OrderStatus } from './types';
 
 export const SALE_AGENTS = ['Nguyễn Văn A', 'Trần Thị B', 'Lê Văn C', 'Phạm Thị D'];
-export const LEAD_SOURCES = ['Facebook Ads', 'Facebook Group', 'Website', 'Zalo', 'Giới thiệu'];
+export const LEAD_SOURCES = ['Facebook Ads', 'Facebook Group', 'Website', 'Zalo', 'Giới thiệu', 'Tiktok'];
 export const CUSTOMER_GROUPS = ['Bán lẻ', 'Đại lý', 'Dự án', 'Vãng lai'];
 
 // Helper to create dates relative to now

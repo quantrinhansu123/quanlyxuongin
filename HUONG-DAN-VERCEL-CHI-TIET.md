@@ -153,3 +153,4 @@ Sau khi thêm xong, kiểm tra:
 - Kiểm tra Realtime Database Rules cho phép đọc/ghi
 - Xem browser console để xem lỗi cụ thể
 
+

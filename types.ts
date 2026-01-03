@@ -1,3 +1,4 @@
+
 export enum LeadStatus {
   NEW = 'Mới',
   CALLED = 'Đã gọi',
@@ -36,12 +37,19 @@ export interface SaleAllocation {
   assignedSales: string[];
 }
 
+export interface DesignUsage {
+  orderId: string;
+  customerName: string;
+  usedAt: string;
+}
+
 export interface DesignItem {
   id: string;
   title: string;
   imageUrl: string;
   category: string;
   description: string;
+  usageHistory?: DesignUsage[];
 }
 
 export interface DashboardMetrics {
@@ -67,6 +75,24 @@ export interface Employee {
   joinDate: string;
   status: EmployeeStatus;
   avatar: string; // Initials or image URL
+}
+
+export interface KPITarget {
+  revenue: number;
+  calls: number;
+  leads: number;
+}
+
+export interface KPIRecord {
+  id: string;
+  employeeId: string;
+  employeeName: string; // For display convenience
+  month: string; // "YYYY-MM"
+  monthlyTarget: KPITarget;
+  weeklyTargets: {
+    week: number;
+    target: KPITarget;
+  }[];
 }
 
 // --- Design Order Types ---

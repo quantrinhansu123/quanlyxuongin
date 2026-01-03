@@ -1,14 +1,14 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { 
-  Search, 
-  Download, 
-  Upload, 
-  RotateCcw, 
-  PhoneCall, 
-  Edit, 
-  Trash2, 
-  Eye, 
-  PlusCircle, 
+import {
+  Search,
+  Download,
+  Upload,
+  RotateCcw,
+  PhoneCall,
+  Edit,
+  Trash2,
+  Eye,
+  PlusCircle,
   CheckCircle,
   Filter,
   ChevronDown,
@@ -17,9 +17,9 @@ import {
   Clock,
   PenLine
 } from 'lucide-react';
-import { Lead, LeadStatus } from '../types';
-import { useLeads, useReferenceData } from '../hooks/useFirebaseData';
-import { updateLead, deleteLead, createLead } from '../services/firebaseService';
+import { Lead, LeadStatus, Order, OrderStatus } from '../types';
+import { useLeads, useReferenceData, useOrders } from '../hooks/useFirebaseData';
+// import { updateLead, deleteLead, createLead } from '../services/firebaseService';
 
 // --- Helper Component: MultiSelect Dropdown ---
 interface MultiSelectProps {
@@ -56,15 +56,14 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, selectedValue
     <div className="relative w-full" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center justify-between w-full px-3 py-2 text-sm border rounded-lg outline-none transition-all shadow-sm ${
-          selectedValues.length > 0 
-            ? 'border-accent bg-blue-50 text-accent font-medium' 
-            : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
-        }`}
+        className={`flex items-center justify-between w-full px-3 py-2 text-sm border rounded-lg outline-none transition-all shadow-sm ${selectedValues.length > 0
+          ? 'border-accent bg-blue-50 text-accent font-medium'
+          : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
+          }`}
       >
         <span className="truncate mr-2">
-          {selectedValues.length > 0 
-            ? `${label}: ${selectedValues.length}` 
+          {selectedValues.length > 0
+            ? `${label}: ${selectedValues.length}`
             : label}
         </span>
         <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
@@ -72,17 +71,17 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, selectedValue
 
       {isOpen && (
         <div className="absolute z-50 mt-1 w-full min-w-[200px] bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
-           <div className="p-2 bg-slate-50 border-b border-slate-100 flex justify-between items-center sticky top-0 z-10">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Chọn {label}</span>
-              {selectedValues.length > 0 && (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onChange([]); }}
-                  className="text-xs text-red-500 hover:text-red-600 font-medium hover:underline"
-                >
-                  Bỏ chọn
-                </button>
-              )}
-           </div>
+          <div className="p-2 bg-slate-50 border-b border-slate-100 flex justify-between items-center sticky top-0 z-10">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Chọn {label}</span>
+            {selectedValues.length > 0 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onChange([]); }}
+                className="text-xs text-red-500 hover:text-red-600 font-medium hover:underline"
+              >
+                Bỏ chọn
+              </button>
+            )}
+          </div>
           <div className="p-1">
             {options.map((option) => (
               <div
@@ -90,9 +89,8 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, selectedValue
                 className="flex items-center px-3 py-2 rounded-md hover:bg-slate-100 cursor-pointer transition-colors"
                 onClick={() => toggleOption(option)}
               >
-                <div className={`w-4 h-4 mr-3 rounded border flex items-center justify-center transition-colors ${
-                  selectedValues.includes(option) ? 'bg-accent border-accent' : 'border-slate-300 bg-white'
-                }`}>
+                <div className={`w-4 h-4 mr-3 rounded border flex items-center justify-center transition-colors ${selectedValues.includes(option) ? 'bg-accent border-accent' : 'border-slate-300 bg-white'
+                  }`}>
                   {selectedValues.includes(option) && <Check size={10} className="text-white" />}
                 </div>
                 <span className={`text-sm ${selectedValues.includes(option) ? 'text-slate-900 font-medium' : 'text-slate-600'}`}>
@@ -101,7 +99,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, selectedValue
               </div>
             ))}
             {options.length === 0 && (
-                <div className="p-3 text-center text-xs text-slate-400">Không có dữ liệu</div>
+              <div className="p-3 text-center text-xs text-slate-400">Không có dữ liệu</div>
             )}
           </div>
         </div>
@@ -111,13 +109,13 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, selectedValue
 };
 
 const LeadManagement: React.FC = () => {
-  const { leads, loading: leadsLoading } = useLeads();
+  const { leads, loading: leadsLoading, updateLead, deleteLead, addLead: createLead } = useLeads();
   const { customerGroups, leadSources, saleAgents, loading: refLoading } = useReferenceData();
   const [searchQuery, setSearchQuery] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
-  
+
   const loading = leadsLoading || refLoading;
-  
+
   // Filter States (Arrays for MultiSelect)
   const [filterGroups, setFilterGroups] = useState<string[]>([]);
   const [filterSources, setFilterSources] = useState<string[]>([]);
@@ -129,7 +127,7 @@ const LeadManagement: React.FC = () => {
   const [selectedLeadForCall, setSelectedLeadForCall] = useState<Lead | null>(null);
   const [newCallNote, setNewCallNote] = useState('');
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
-  
+
   // Add New Lead Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newLead, setNewLead] = useState({
@@ -155,24 +153,24 @@ const LeadManagement: React.FC = () => {
     return {
       guests: leads.length,
       orders: leads.filter(l => l.isOrderCreated).length,
-      revenue: leads.filter(l => l.isOrderCreated).length * 500000 
+      revenue: leads.filter(l => l.isOrderCreated).length * 500000
     };
   }, [leads]);
 
   // Generate available Call Count options dynamically + defaults
   const availableCallCounts = useMemo(() => {
-     const counts = new Set(leads.map(l => String(l.callLog.count)));
-     ['0', '1', '2', '3', '4', '5'].forEach(c => counts.add(c));
-     return Array.from(counts).sort((a, b) => Number(a) - Number(b));
+    const counts = new Set(leads.map(l => String(l.callLog.count)));
+    ['0', '1', '2', '3', '4', '5'].forEach(c => counts.add(c));
+    return Array.from(counts).sort((a, b) => Number(a) - Number(b));
   }, [leads]);
 
   // Filtering Logic
   const filteredLeads = useMemo(() => {
     return leads.filter(lead => {
-      const matchesSearch = Object.values(lead).some(val => 
+      const matchesSearch = Object.values(lead).some(val =>
         String(val).toLowerCase().includes(searchQuery.toLowerCase())
       );
-      
+
       const matchesGroup = filterGroups.length > 0 ? filterGroups.includes(lead.group) : true;
       const matchesSource = filterSources.length > 0 ? filterSources.includes(lead.source) : true;
       const matchesSale = filterSales.length > 0 ? filterSales.includes(lead.saleName) : true;
@@ -211,8 +209,8 @@ const LeadManagement: React.FC = () => {
 
     const newCount = selectedLeadForCall.callLog.count + 1;
     const newContentLine = `${newCount}. ${newCallNote}`;
-    
-    const updatedContent = selectedLeadForCall.callLog.content 
+
+    const updatedContent = selectedLeadForCall.callLog.content
       ? `${selectedLeadForCall.callLog.content}\n${newContentLine}`
       : newContentLine;
 
@@ -235,20 +233,41 @@ const LeadManagement: React.FC = () => {
     }
   };
 
+  // Use Order Hook for actions
+  const { addOrder } = useOrders();
+
   const handleCreateOrder = async (id: string) => {
-    if(window.confirm('Xác nhận lên đơn cho khách hàng này?')) {
+    if (window.confirm('Xác nhận lên đơn cho khách hàng này?')) {
       const lead = leads.find(l => l.id === id);
       if (!lead) return;
-      
+
       const updatedLead: Lead = {
         ...lead,
         isOrderCreated: true,
         status: LeadStatus.CLOSED,
         processedAt: lead.processedAt || new Date().toISOString()
       };
-      
+
+      const newOrder: Order = {
+        id: `DH${Date.now().toString().slice(-6)}`, // Generate Simple ID
+        customerName: lead.name,
+        customerPhone: lead.phone,
+        customerGroup: lead.group,
+        source: lead.source,
+        saleName: lead.saleName,
+        createdAt: new Date().toISOString(),
+        productName: 'Chưa cập nhật',
+        requirements: lead.note || '',
+        status: OrderStatus.PENDING,
+        revenue: 0,
+        paymentHistory: [],
+        callCount: lead.callLog.count
+      };
+
       try {
         await updateLead(updatedLead);
+        await addOrder(newOrder);
+        alert('Đã tạo đơn hàng thành công!');
       } catch (error) {
         console.error('Error updating lead:', error);
         alert('Có lỗi xảy ra khi cập nhật!');
@@ -257,7 +276,7 @@ const LeadManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if(window.confirm('Bạn có chắc muốn xóa khách hàng này?')) {
+    if (window.confirm('Bạn có chắc muốn xóa khách hàng này?')) {
       try {
         await deleteLead(id);
       } catch (error) {
@@ -271,7 +290,7 @@ const LeadManagement: React.FC = () => {
   const handleNoteChange = async (id: string, newNote: string) => {
     const lead = leads.find(l => l.id === id);
     if (!lead) return;
-    
+
     const updatedLead: Lead = { ...lead, note: newNote };
     try {
       await updateLead(updatedLead);
@@ -366,9 +385,9 @@ const LeadManagement: React.FC = () => {
         <div className="flex flex-wrap gap-3 justify-between items-center">
           <div className="relative flex-1 min-w-[300px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Tìm kiếm tất cả (Tên, SĐT, Mã KH...)" 
+            <input
+              type="text"
+              placeholder="Tìm kiếm tất cả (Tên, SĐT, Mã KH...)"
               className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -381,15 +400,15 @@ const LeadManagement: React.FC = () => {
             >
               <PlusCircle size={16} /> Thêm mới
             </button>
-             <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+            <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
               <Download size={16} /> Xuất Excel
             </button>
             <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
               <Upload size={16} /> Nhập Excel
             </button>
-            <button 
-                onClick={handleResetFilters}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+            <button
+              onClick={handleResetFilters}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
             >
               <RotateCcw size={16} /> Reset
             </button>
@@ -398,36 +417,36 @@ const LeadManagement: React.FC = () => {
 
         {/* Row 2: Filters (MultiSelect Checkboxes) */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-            <MultiSelect 
-                label="Nhóm KH" 
-                options={customerGroups} 
-                selectedValues={filterGroups} 
-                onChange={setFilterGroups} 
-            />
-            <MultiSelect 
-                label="Nguồn tới" 
-                options={leadSources} 
-                selectedValues={filterSources} 
-                onChange={setFilterSources} 
-            />
-            <MultiSelect 
-                label="NV Sale" 
-                options={saleAgents} 
-                selectedValues={filterSales} 
-                onChange={setFilterSales} 
-            />
-            <MultiSelect 
-                label="Lần gọi" 
-                options={availableCallCounts} 
-                selectedValues={filterCallCounts} 
-                onChange={setFilterCallCounts} 
-            />
-            <MultiSelect 
-                label="Trạng thái" 
-                options={Object.values(LeadStatus)} 
-                selectedValues={filterStatuses} 
-                onChange={setFilterStatuses} 
-            />
+          <MultiSelect
+            label="Nhóm KH"
+            options={customerGroups}
+            selectedValues={filterGroups}
+            onChange={setFilterGroups}
+          />
+          <MultiSelect
+            label="Nguồn tới"
+            options={leadSources}
+            selectedValues={filterSources}
+            onChange={setFilterSources}
+          />
+          <MultiSelect
+            label="NV Sale"
+            options={saleAgents}
+            selectedValues={filterSales}
+            onChange={setFilterSales}
+          />
+          <MultiSelect
+            label="Lần gọi"
+            options={availableCallCounts}
+            selectedValues={filterCallCounts}
+            onChange={setFilterCallCounts}
+          />
+          <MultiSelect
+            label="Trạng thái"
+            options={Object.values(LeadStatus)}
+            selectedValues={filterStatuses}
+            onChange={setFilterStatuses}
+          />
         </div>
 
         {/* Row 3: Counters */}
@@ -459,40 +478,40 @@ const LeadManagement: React.FC = () => {
 
       {/* Data Table */}
       {!loading && (
-      <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs uppercase font-semibold whitespace-nowrap">
-                <th className="p-4 w-24">Mã KH</th>
-                <th className="p-4">Nhóm KH</th>
-                <th className="p-4">Họ và tên</th>
-                <th className="p-4">SĐT</th>
-                <th className="p-4">Nguồn tới</th>
-                <th className="p-4">NV Sale</th>
-                <th className="p-4 text-center">Lần gọi</th>
-                <th className="p-4 text-center">Thời gian xử lý</th>
-                <th className="p-4 w-[200px]">Ghi chú (Sửa trực tiếp)</th>
-                <th className="p-4">Trạng thái</th>
-                <th className="p-4 text-right">Hành động</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredLeads.length > 0 ? filteredLeads.map((lead) => (
-                <tr key={lead.id} className="hover:bg-slate-50 transition-colors text-sm">
-                  <td className="p-4 font-medium text-slate-700">{lead.id}</td>
-                  <td className="p-4">
-                    <span className="inline-block px-2 py-1 rounded-full bg-slate-100 text-slate-600 text-xs">
-                      {lead.group}
-                    </span>
-                  </td>
-                  <td className="p-4 font-medium text-slate-900">{lead.name}</td>
-                  <td className="p-4 text-slate-600">{lead.phone}</td>
-                  <td className="p-4 text-slate-900">{lead.source}</td>
-                  <td className="p-4 text-slate-600">{lead.saleName}</td>
-                  <td className="p-4 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                        <button 
+        <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs uppercase font-semibold whitespace-nowrap">
+                  <th className="p-4 w-24">Mã KH</th>
+                  <th className="p-4">Nhóm KH</th>
+                  <th className="p-4">Họ và tên</th>
+                  <th className="p-4">SĐT</th>
+                  <th className="p-4">Nguồn tới</th>
+                  <th className="p-4">NV Sale</th>
+                  <th className="p-4 text-center">Lần gọi</th>
+                  <th className="p-4 text-center">Thời gian xử lý</th>
+                  <th className="p-4 w-[200px]">Ghi chú (Sửa trực tiếp)</th>
+                  <th className="p-4">Trạng thái</th>
+                  <th className="p-4 text-right">Hành động</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredLeads.length > 0 ? filteredLeads.map((lead) => (
+                  <tr key={lead.id} className="hover:bg-slate-50 transition-colors text-sm">
+                    <td className="p-4 font-medium text-slate-700">{lead.id}</td>
+                    <td className="p-4">
+                      <span className="inline-block px-2 py-1 rounded-full bg-slate-100 text-slate-600 text-xs">
+                        {lead.group}
+                      </span>
+                    </td>
+                    <td className="p-4 font-medium text-slate-900">{lead.name}</td>
+                    <td className="p-4 text-slate-600">{lead.phone}</td>
+                    <td className="p-4 text-slate-900">{lead.source}</td>
+                    <td className="p-4 text-slate-600">{lead.saleName}</td>
+                    <td className="p-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
                           onClick={() => handleCallClick(lead)}
                           className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors font-bold border border-blue-100"
                           title="Thêm ghi chú cuộc gọi"
@@ -500,86 +519,86 @@ const LeadManagement: React.FC = () => {
                           {lead.callLog.count}
                         </button>
                         {lead.callLog.content && (
-                           <div className="group relative">
-                             <StickyNote size={16} className="text-yellow-500 cursor-help" />
-                             <div className="hidden group-hover:block absolute z-10 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded shadow-lg whitespace-pre-wrap text-left">
-                                {lead.callLog.content}
-                             </div>
-                           </div>
+                          <div className="group relative">
+                            <StickyNote size={16} className="text-yellow-500 cursor-help" />
+                            <div className="hidden group-hover:block absolute z-10 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded shadow-lg whitespace-pre-wrap text-left">
+                              {lead.callLog.content}
+                            </div>
+                          </div>
                         )}
-                    </div>
-                  </td>
-                  {/* Cột Thời gian xử lý */}
-                  <td className="p-4 text-center">
-                    <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded border font-mono text-xs
-                        ${lead.processedAt 
-                            ? 'bg-slate-100 text-slate-500 border-slate-200' // Đã xong
-                            : 'bg-red-50 text-red-600 border-red-200 animate-pulse' // Đang chạy
+                      </div>
+                    </td>
+                    {/* Cột Thời gian xử lý */}
+                    <td className="p-4 text-center">
+                      <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded border font-mono text-xs
+                        ${lead.processedAt
+                          ? 'bg-slate-100 text-slate-500 border-slate-200' // Đã xong
+                          : 'bg-red-50 text-red-600 border-red-200 animate-pulse' // Đang chạy
                         }
                     `}>
                         <Clock size={12} />
                         {formatDuration(lead.assignedAt, lead.processedAt)}
-                    </div>
-                  </td>
-                  {/* Cột Ghi chú có thể sửa trực tiếp */}
-                  <td className="p-4 min-w-[200px]">
+                      </div>
+                    </td>
+                    {/* Cột Ghi chú có thể sửa trực tiếp */}
+                    <td className="p-4 min-w-[200px]">
                       <div className="relative group">
-                        <input 
-                            type="text" 
-                            value={lead.note}
-                            onChange={(e) => handleNoteChange(lead.id, e.target.value)}
-                            className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-accent focus:bg-white rounded px-2 py-1.5 outline-none transition-all text-slate-700 placeholder-slate-400"
-                            placeholder="Nhập ghi chú..."
+                        <input
+                          type="text"
+                          value={lead.note}
+                          onChange={(e) => handleNoteChange(lead.id, e.target.value)}
+                          className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-accent focus:bg-white rounded px-2 py-1.5 outline-none transition-all text-slate-700 placeholder-slate-400"
+                          placeholder="Nhập ghi chú..."
                         />
                         <PenLine size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 opacity-0 group-hover:opacity-100 pointer-events-none" />
                       </div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium border whitespace-nowrap
-                      ${lead.status === LeadStatus.NEW ? 'bg-blue-50 text-blue-700 border-blue-200' : 
-                        lead.status === LeadStatus.CLOSED ? 'bg-green-50 text-green-700 border-green-200' :
-                        lead.status === LeadStatus.NOT_INTERESTED ? 'bg-red-50 text-red-700 border-red-200' :
-                        'bg-amber-50 text-amber-700 border-amber-200'
-                      }`}>
-                      {lead.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                       <button onClick={() => alert('Xem chi tiết ' + lead.name)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Xem chi tiết">
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium border whitespace-nowrap
+                      ${lead.status === LeadStatus.NEW ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                          lead.status === LeadStatus.CLOSED ? 'bg-green-50 text-green-700 border-green-200' :
+                            lead.status === LeadStatus.NOT_INTERESTED ? 'bg-red-50 text-red-700 border-red-200' :
+                              'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
+                        {lead.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => alert('Xem chi tiết ' + lead.name)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Xem chi tiết">
                           <Eye size={16} />
-                       </button>
-                       <button onClick={() => handleCallClick(lead)} className="p-1.5 text-slate-400 hover:text-accent hover:bg-blue-50 rounded" title="Ghi chú nhanh (Dừng thời gian)">
+                        </button>
+                        <button onClick={() => handleCallClick(lead)} className="p-1.5 text-slate-400 hover:text-accent hover:bg-blue-50 rounded" title="Ghi chú nhanh (Dừng thời gian)">
                           <PhoneCall size={16} />
-                       </button>
-                       {!lead.isOrderCreated && (
-                          <button 
-                             onClick={() => handleCreateOrder(lead.id)}
-                             className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded" 
-                             title="Lên đơn hàng (Dừng thời gian)"
-                           >
+                        </button>
+                        {!lead.isOrderCreated && (
+                          <button
+                            onClick={() => handleCreateOrder(lead.id)}
+                            className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded"
+                            title="Lên đơn hàng (Dừng thời gian)"
+                          >
                             <PlusCircle size={16} />
                           </button>
-                       )}
-                       {lead.isOrderCreated && (
+                        )}
+                        {lead.isOrderCreated && (
                           <span className="p-1.5 text-green-600" title="Đã lên đơn"><CheckCircle size={16} /></span>
-                       )}
-                       <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Sửa"><Edit size={16} /></button>
-                       <button onClick={() => handleDelete(lead.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded" title="Xóa"><Trash2 size={16} /></button>
-                    </div>
-                  </td>
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan={11} className="p-8 text-center text-slate-500">
-                    Không tìm thấy dữ liệu phù hợp.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                        )}
+                        <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Sửa"><Edit size={16} /></button>
+                        <button onClick={() => handleDelete(lead.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded" title="Xóa"><Trash2 size={16} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan={11} className="p-8 text-center text-slate-500">
+                      Không tìm thấy dữ liệu phù hợp.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
       )}
 
       {/* Call Modal */}
@@ -590,10 +609,10 @@ const LeadManagement: React.FC = () => {
               <PhoneCall className="text-accent" />
               Ghi chú cuộc gọi lần {selectedLeadForCall ? selectedLeadForCall.callLog.count + 1 : 1}
             </h3>
-            
+
             <div className="mb-4">
               <label className="block text-sm font-medium text-slate-700 mb-1">Nội dung trao đổi (Enter để lưu)</label>
-              <textarea 
+              <textarea
                 className="w-full h-32 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none resize-none"
                 placeholder="Khách hàng phản hồi như thế nào..."
                 value={newCallNote}
@@ -610,13 +629,13 @@ const LeadManagement: React.FC = () => {
             </div>
 
             <div className="flex justify-end gap-3">
-              <button 
+              <button
                 onClick={() => setIsCallModalOpen(false)}
                 className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
               >
                 Hủy bỏ
               </button>
-              <button 
+              <button
                 onClick={submitCallNote}
                 disabled={!newCallNote.trim()}
                 className="px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -636,7 +655,7 @@ const LeadManagement: React.FC = () => {
               <PlusCircle className="text-accent" />
               Thêm khách hàng mới
             </h3>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Họ và tên *</label>
