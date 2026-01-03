@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  Box, 
-  MessageCircle, 
-  Users, 
-  Palette, 
-  Printer, 
-  PenTool, 
-  Factory, 
+import {
+  Box,
+  MessageCircle,
+  Users,
+  Palette,
+  Printer,
+  PenTool,
+  Factory,
   BarChart3,
   ChevronLeft,
   ChevronRight,
@@ -40,13 +40,12 @@ const Sidebar: React.FC = () => {
   ];
 
   return (
-    <div 
-      className={`${
-        isCollapsed ? 'w-20' : 'w-64'
-      } bg-slate-900 text-slate-300 min-h-screen flex flex-col shadow-xl border-r border-slate-800 transition-all duration-300 relative`}
+    <div
+      className={`${isCollapsed ? 'w-20' : 'w-64'
+        } bg-slate-900 text-slate-300 min-h-screen flex flex-col shadow-xl border-r border-slate-800 transition-all duration-300 relative`}
     >
       {/* Toggle Button */}
-      <button 
+      <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="absolute -right-3 top-20 bg-accent text-white rounded-full p-1 shadow-lg hover:bg-blue-600 transition-colors z-10 border border-slate-800"
       >
@@ -55,15 +54,15 @@ const Sidebar: React.FC = () => {
 
       {/* Header */}
       <div className={`h-16 flex items-center ${isCollapsed ? 'justify-center px-0' : 'justify-start px-6 gap-3'} border-b border-slate-800 bg-slate-950/50 transition-all duration-300 overflow-hidden whitespace-nowrap`}>
-        <div className="min-w-[32px] w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white shrink-0">
-          <Box size={20} strokeWidth={2.5} />
+        <div className="min-w-[32px] w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden shadow-lg shrink-0 bg-white">
+          <img src="/assets/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
         </div>
         <div className={`transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 w-auto'}`}>
           <h1 className="font-bold text-white text-base leading-none">CRM Pro</h1>
           <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Lead Master</span>
         </div>
       </div>
-      
+
       {/* Scrollable Menu Area */}
       <div className="flex-1 overflow-y-auto py-4 px-3 space-y-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
         {menuGroups.map((group, index) => (
@@ -87,15 +86,15 @@ const Sidebar: React.FC = () => {
                     `flex items-center rounded-lg transition-all duration-200 group relative
                     ${isCollapsed ? 'justify-center w-10 h-10 mx-auto' : 'gap-3 px-3 py-2.5 w-full'}
                     ${isActive
-                        ? 'bg-slate-800 text-white font-medium shadow-md shadow-slate-900/50'
-                        : 'hover:bg-slate-800/50 hover:text-white'
+                      ? 'bg-slate-800 text-white font-medium shadow-md shadow-slate-900/50'
+                      : 'hover:bg-slate-800/50 hover:text-white'
                     }`
                   }
                 >
                   <span className={`transition-transform duration-200 group-hover:scale-110 ${item.color}`}>
                     {item.icon}
                   </span>
-                  
+
                   {!isCollapsed && (
                     <span className="text-sm truncate">{item.label}</span>
                   )}
@@ -119,7 +118,7 @@ const Sidebar: React.FC = () => {
           <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold shadow-lg text-sm shrink-0">
             AD
           </div>
-          
+
           {!isCollapsed && (
             <div className="overflow-hidden min-w-[100px]">
               <p className="text-sm font-medium text-white truncate">Admin User</p>
@@ -129,9 +128,9 @@ const Sidebar: React.FC = () => {
               </div>
             </div>
           )}
-          
+
           {!isCollapsed && (
-             <LogOut size={16} className="text-slate-500 hover:text-red-400 ml-auto" />
+            <LogOut size={16} className="text-slate-500 hover:text-red-400 ml-auto" />
           )}
         </div>
       </div>
