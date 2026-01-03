@@ -55,7 +55,7 @@ const Sidebar: React.FC = () => {
       {/* Header */}
       <div className={`h-16 flex items-center ${isCollapsed ? 'justify-center px-0' : 'justify-start px-6 gap-3'} border-b border-slate-800 bg-slate-950/50 transition-all duration-300 overflow-hidden whitespace-nowrap`}>
         <div className="min-w-[32px] w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden shadow-lg shrink-0 bg-white">
-          <img src="/assets/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+          <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
         </div>
         <div className={`transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 w-auto'}`}>
           <h1 className="font-bold text-white text-base leading-none">CRM Pro</h1>
