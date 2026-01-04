@@ -521,7 +521,18 @@ export function useDesignItems() {
     return Promise.reject("Real mode updateDesignItem not implemented");
   };
 
-  return { designItems, loading, error, addDesignItem, updateDesignItem, refetch: fetchItems };
+  const deleteDesignItem = async (id: string) => {
+    if (USE_MOCK_DATA) {
+      const current = JSON.parse(localStorage.getItem('mock_designs') || '[]');
+      const filtered = current.filter((d: DesignItem) => d.id !== id);
+      localStorage.setItem('mock_designs', JSON.stringify(filtered));
+      setDesignItems(prev => prev.filter(d => d.id !== id));
+      return Promise.resolve();
+    }
+    return Promise.reject("Real mode deleteDesignItem not implemented");
+  };
+
+  return { designItems, loading, error, addDesignItem, updateDesignItem, deleteDesignItem, refetch: fetchItems };
 }
 
 // Hook for Reference Data

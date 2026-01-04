@@ -49,6 +49,9 @@ export interface DesignItem {
   imageUrl: string;
   category: string;
   description: string;
+  gallery?: string[]; // Additional images
+  attachments?: { name: string; url: string; fileType?: string }[];
+  originalFile?: { name: string; url: string; fileType?: string };
   usageHistory?: DesignUsage[];
 }
 
@@ -148,4 +151,32 @@ export interface Order {
   revenue: number;
   paymentHistory: PaymentRecord[];
   callCount: number; // For filtering
+}
+// --- AI Bag Generator Types ---
+export type BagType = 'paper' | 'cloth' | 'box' | 'plastic';
+
+export interface BagTemplate {
+  id: string;
+  name: string;
+  type: BagType;
+  previewImage: string;
+  description?: string;
+}
+
+export interface GeneratedBagImage {
+  id: string;
+  prompt: string;
+  imageUrl: string;
+  timestamp: string;
+  bagType: string;
+  bagSize: string;
+  bagColor: string;
+  templateId: string;
+}
+
+export interface AIGeneratorSettings {
+  apiKey?: string;
+  apiProvider: 'openai' | 'stability' | 'midjourney' | 'mock';
+  model?: string;
+  quality?: 'standard' | 'hd';
 }

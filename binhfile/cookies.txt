@@ -1,0 +1,4 @@
+# HTTrack Website Copier Cookie File
+# This file format is compatible with Netscape cookies
+giainoffset.com	TRUE	/	FALSE	1999999999	PHPSESSID	6essa5o2651mcd24aelk74m9e8
+
