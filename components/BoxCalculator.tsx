@@ -24,6 +24,11 @@ const BoxCalculator: React.FC = () => {
   const [upsPerSheet, setUpsPerSheet] = useState(0);
   const [layoutInfo, setLayoutInfo] = useState<{ cols: number; rows: number; rotated: boolean }>({ cols: 0, rows: 0, rotated: false });
   
+  // Cài đặt nâng cao
+  const [bleed, setBleed] = useState(0.3); // cm - Viền dự phòng
+  const [gap, setGap] = useState(0.2); // cm - Khoảng cách giữa các hộp
+  const [margin, setMargin] = useState(0.5); // cm - Lề giấy
+  
   // Vật liệu
   const [paperWeight, setPaperWeight] = useState(300); // gsm - Hộp cần giấy dày hơn
   const [isLaminated, setIsLaminated] = useState(false);
@@ -47,7 +52,12 @@ const BoxCalculator: React.FC = () => {
   useEffect(() => {
     calculate();
   }, [boxSize, quantity, paperWeight, isLaminated, hasInnerFlaps, 
-      paperPricePerM2, printCostPerM2, laminateCostPerM2, gluingCostPerBox, cuttingCostPerBox, selectedPaperSize]);
+      paperPricePerM2, printCostPerM2, laminateCostPerM2, gluingCostPerBox, cuttingCostPerBox, selectedPaperSize, bleed, gap, margin]);
+
+  // Tự động tính toán khi component mount
+  useEffect(() => {
+    calculate();
+  }, []);
 
   const calculate = () => {
     const { width, height, depth } = boxSize;
@@ -70,8 +80,8 @@ const BoxCalculator: React.FC = () => {
     const flatAreaM2 = flatAreaWithMargin / 10000;
     
     // Tính khổ giấy đề xuất
-    const flatWidth = (width * 2) + (depth * 2) + 3;
-    const flatHeight = height + depth + 3;
+    const flatWidth = (width * 2) + (depth * 2) + 3 + (bleed * 2) + gap;
+    const flatHeight = height + depth + 3 + (bleed * 2) + gap;
     
     const standardPaperSizes = [
       { w: 21, h: 29.7, name: 'A4' }, 
@@ -127,15 +137,19 @@ const BoxCalculator: React.FC = () => {
     
     // Tính số hộp bế được trên 1 tờ giấy
     if (recommendedSize.width > 0 && recommendedSize.height > 0) {
+      // Usable paper area (subtract margins)
+      const usableWidth = recommendedSize.width - (margin * 2);
+      const usableHeight = recommendedSize.height - (margin * 2);
+      
       const boxFlatWidth = flatWidth;
       const boxFlatHeight = flatHeight;
       
-      const option1_cols = Math.floor(recommendedSize.width / boxFlatWidth);
-      const option1_rows = Math.floor(recommendedSize.height / boxFlatHeight);
+      const option1_cols = Math.floor(usableWidth / boxFlatWidth);
+      const option1_rows = Math.floor(usableHeight / boxFlatHeight);
       const option1_ups = option1_cols * option1_rows;
       
-      const option2_cols = Math.floor(recommendedSize.width / boxFlatHeight);
-      const option2_rows = Math.floor(recommendedSize.height / boxFlatWidth);
+      const option2_cols = Math.floor(usableWidth / boxFlatHeight);
+      const option2_rows = Math.floor(usableHeight / boxFlatWidth);
       const option2_ups = option2_cols * option2_rows;
       
       const bestUps = Math.max(option1_ups, option2_ups);
@@ -247,11 +261,15 @@ const BoxCalculator: React.FC = () => {
                            className="w-full p-2 border rounded bg-white"
                          >
                            <option value="auto">Tự động gợi ý</option>
-                           {standardPaperSizes.map((size, idx) => (
-                             <option key={idx} value={size.name}>
-                               {size.name}
-                             </option>
-                           ))}
+                           <option value="A4">A4 (21x29.7cm)</option>
+                           <option value="A3">A3 (29.7x42cm)</option>
+                           <option value="A2">A2 (42x59.4cm)</option>
+                           <option value="A1">A1 (59.4x84.1cm)</option>
+                           <option value="65x86 cm">65x86cm</option>
+                           <option value="70x100 cm">70x100cm</option>
+                           <option value="79x109 cm">79x109cm</option>
+                           <option value="90x120 cm">90x120cm</option>
+                           <option value="100x140 cm">100x140cm</option>
                          </select>
                     </div>
                 </div>
@@ -359,6 +377,51 @@ const BoxCalculator: React.FC = () => {
             </div>
 
             <div className="bg-white p-5 rounded-2xl shadow-xl border border-slate-200">
+                <h3 className="font-bold text-base mb-3 text-slate-700 border-b pb-2">📐 Cài Đặt Nâng Cao</h3>
+                <div className="space-y-3">
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">
+                          Tràn lề - Bleed (cm) - <span className="text-slate-400">Viền dự phòng</span>
+                        </label>
+                        <input 
+                          type="number" 
+                          value={bleed} 
+                          onChange={e => setBleed(Number(e.target.value))} 
+                          className="w-full p-2 border rounded" 
+                          step="0.1"
+                          min="0"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">
+                          Khe hở (cm) - <span className="text-slate-400">Khoảng cách giữa các con</span>
+                        </label>
+                        <input 
+                          type="number" 
+                          value={gap} 
+                          onChange={e => setGap(Number(e.target.value))} 
+                          className="w-full p-2 border rounded" 
+                          step="0.1"
+                          min="0"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">
+                          Lề giấy (cm) - <span className="text-slate-400">Lề an toàn</span>
+                        </label>
+                        <input 
+                          type="number" 
+                          value={margin} 
+                          onChange={e => setMargin(Number(e.target.value))} 
+                          className="w-full p-2 border rounded" 
+                          step="0.1"
+                          min="0"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl shadow-xl border border-slate-200">
                 <h3 className="font-bold text-base mb-3 text-slate-700 border-b pb-2">3. Đơn giá sản xuất</h3>
                 <div className="grid grid-cols-2 gap-3">
                      <div>
@@ -410,9 +473,67 @@ const BoxCalculator: React.FC = () => {
             </div>
         </div>
             
-        {/* Middle Column - Ảnh trải hộp */}
-        <div className="xl:col-span-4">
-          <div className="bg-white p-4 rounded-2xl shadow-2xl border border-slate-200 h-full">
+        {/* Middle Column - Layout Visualization & Flat Pattern */}
+        <div className="xl:col-span-4 space-y-4">
+          {/* Visualization bố trí trên tờ giấy */}
+          {upsPerSheet > 0 && layoutInfo.cols > 0 && (
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+              <h3 className="font-bold text-base mb-3 text-slate-700 border-b pb-2">📐 Bố trí {recommendedPaperSize.name}</h3>
+              <div className="bg-slate-50 rounded-lg p-3">
+                <svg width="100%" height="280" viewBox="0 0 400 400" className="mx-auto" style={{maxWidth: '100%'}}>
+                  {/* Tờ giấy nền */}
+                  <rect x="20" y="20" width="360" height="360" fill="#fff" stroke="#2563eb" strokeWidth="3" rx="2"/>
+                  <text x="200" y="15" textAnchor="middle" fill="#1e40af" fontSize="11" fontWeight="bold">
+                    {recommendedPaperSize.name} - {layoutInfo.cols}×{layoutInfo.rows} = {upsPerSheet} hộp/tờ
+                  </text>
+                  
+                  {/* Vẽ grid các hộp */}
+                  {Array.from({ length: layoutInfo.rows }).map((_, rowIdx) => 
+                    Array.from({ length: layoutInfo.cols }).map((_, colIdx) => {
+                      const boxW = 360 / layoutInfo.cols - 4;
+                      const boxH = 360 / layoutInfo.rows - 4;
+                      const x = 20 + (colIdx * (360 / layoutInfo.cols)) + 2;
+                      const y = 20 + (rowIdx * (360 / layoutInfo.rows)) + 2;
+                      
+                      return (
+                        <g key={`${rowIdx}-${colIdx}`}>
+                          <rect 
+                            x={x} 
+                            y={y} 
+                            width={boxW} 
+                            height={boxH} 
+                            fill="#dbeafe" 
+                            stroke="#2563eb" 
+                            strokeWidth="1.5"
+                            opacity="0.9"
+                          />
+                          <text 
+                            x={x + boxW/2} 
+                            y={y + boxH/2} 
+                            textAnchor="middle" 
+                            dominantBaseline="middle"
+                            fill="#1e40af" 
+                            fontSize="10"
+                            fontWeight="bold"
+                          >
+                            {rowIdx * layoutInfo.cols + colIdx + 1}
+                          </text>
+                        </g>
+                      );
+                    })
+                  )}
+                  
+                  {/* Label kích thước */}
+                  <text x="200" y="395" textAnchor="middle" fill="#1e40af" fontSize="10">
+                    {layoutInfo.rotated ? '🔄 Xoay tối ưu' : '✓ Chuẩn'}
+                  </text>
+                </svg>
+              </div>
+            </div>
+          )}
+
+          {/* Ảnh trải hộp */}
+          <div className="bg-white p-4 rounded-2xl shadow-2xl border border-slate-200">
                 <h3 className="font-bold text-base mb-3 text-slate-700 border-b pb-2">Ảnh trải hộp (Flat Pattern)</h3>
                 <div className="bg-slate-50 rounded-lg p-6">
                   <p className="text-sm font-semibold text-slate-700 mb-3 text-center">Bản trải hộp trên mặt phẳng</p>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSaleAllocations, useProducts, useEmployees } from '../hooks/useFirebaseData';
+import { useSaleAllocations, useProducts, useEmployees, useLeads } from '../hooks/useFirebaseData';
 import { SaleAllocation } from '../types';
 import { Plus, X, Shuffle, ChevronDown } from 'lucide-react';
 import { CUSTOMER_GROUPS } from '../constants';
@@ -8,6 +8,7 @@ const SalesAllocation: React.FC = () => {
   const { allocations, addAllocation, updateAllocation, deleteAllocation } = useSaleAllocations();
   const { products: allProducts } = useProducts();
   const { employees } = useEmployees();
+  const { leads, updateLead } = useLeads();
 
   // Filter only Sale employees
   const saleAgents = employees
@@ -16,6 +17,21 @@ const SalesAllocation: React.FC = () => {
 
   // Derive unique product groups from product list
   const availableProductGroups = Array.from(new Set(allProducts.map(p => p.group)));
+
+  // Custom product groups and products from localStorage
+  const [customProductGroups, setCustomProductGroups] = useState<string[]>(() => {
+    const saved = localStorage.getItem('customProductGroups');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+  const [customProducts, setCustomProducts] = useState<string[]>(() => {
+    const saved = localStorage.getItem('customProducts');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Combine available options with custom ones
+  const allProductGroups = [...new Set([...availableProductGroups, ...customProductGroups])];
+  const allProductOptions = [...new Set([...allProducts.map(p => p.name), ...customProducts])];
 
   // Popover State for adding tags
   const [activePopover, setActivePopover] = useState<{ id: string, type: 'product' | 'sale' | 'group' } | null>(null);
@@ -78,8 +94,67 @@ const SalesAllocation: React.FC = () => {
     });
   };
 
-  const handleAutoDistribute = () => {
-    alert("Hệ thống đã tự động phân chia đều data cho các Sale đang hoạt động!");
+  const addCustomProductGroup = (value: string) => {
+    if (!value.trim() || customProductGroups.includes(value)) return;
+    const updated = [...customProductGroups, value.trim()];
+    setCustomProductGroups(updated);
+    localStorage.setItem('customProductGroups', JSON.stringify(updated));
+  };
+
+  const addCustomProduct = (value: string) => {
+    if (!value.trim() || customProducts.includes(value)) return;
+    const updated = [...customProducts, value.trim()];
+    setCustomProducts(updated);
+    localStorage.setItem('customProducts', JSON.stringify(updated));
+  };
+
+  const handleAutoDistribute = async () => {
+    if (!window.confirm('Bạn có chắc muốn phân bổ Sale tự động cho các khách hàng dựa trên Loại sản phẩm?')) {
+      return;
+    }
+
+    let assignedCount = 0;
+    let skippedCount = 0;
+
+    // Lọc leads chưa có đơn hàng và ò trạng thái Mới hoặc Đã gọi
+    const unassignedLeads = leads.filter(lead => 
+      !lead.isOrderCreated && 
+      lead.productType && 
+      (lead.status === 'Mới' || lead.status === 'Đã gọi')
+    );
+
+    for (const lead of unassignedLeads) {
+      // Tìm allocation phù hợp với nhóm khách hàng và sản phẩm
+      const matchedAllocation = allocations.find(alloc => 
+        alloc.customerGroup === lead.group &&
+        (alloc.products.includes(lead.productType) || 
+         alloc.productGroups.some(pg => lead.productType.includes(pg)))
+      );
+
+      if (matchedAllocation && matchedAllocation.assignedSales.length > 0) {
+        // Chọn sale ngẫu nhiên từ danh sách sale được phân bổ
+        const randomSale = matchedAllocation.assignedSales[
+          Math.floor(Math.random() * matchedAllocation.assignedSales.length)
+        ];
+
+        // Cập nhật lead với sale được phân bổ
+        try {
+          await updateLead({
+            ...lead,
+            saleName: randomSale
+          });
+          assignedCount++;
+        } catch (error) {
+          console.error(`Lỗi khi phân bổ sale cho lead ${lead.id}:`, error);
+          skippedCount++;
+        }
+      } else {
+        skippedCount++;
+      }
+    }
+
+    alert(`Đã phân bổ thành công ${assignedCount} khách hàng!\n` +
+          `Bỏ qua ${skippedCount} khách hàng (không khớp hoặc không có sale phụ trách).`);
   };
 
   return (
@@ -143,20 +218,41 @@ const SalesAllocation: React.FC = () => {
                       + Thêm
                     </button>
                   </div>
-                  {/* Drodown for Groups */}
+                  {/* Dropdown for Groups */}
                   {activePopover?.id === item.id && activePopover.type === 'group' && (
-                    <div className="absolute z-10 mt-2 w-48 bg-white rounded-lg shadow-xl border border-slate-100 p-1 animate-in fade-in zoom-in-95">
-                      <div className="text-xs font-semibold text-slate-400 px-2 py-1">Chọn nhóm SP</div>
-                      {availableProductGroups.map(g => (
-                        <button
-                          key={g}
-                          onClick={() => addTag(item.id, 'productGroups', g)}
-                          className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-50 rounded text-slate-700"
-                        >
-                          {g}
-                        </button>
-                      ))}
-                      {availableProductGroups.length === 0 && <div className="p-2 text-xs text-slate-400">Chưa có nhóm nào</div>}
+                    <div className="absolute z-10 mt-2 w-64 bg-white rounded-lg shadow-xl border border-slate-100 p-2 animate-in fade-in zoom-in-95 max-h-80 overflow-y-auto">
+                      <div className="text-xs font-semibold text-slate-400 px-2 py-1 mb-1">Chọn hoặc thêm mới nhóm SP</div>
+                      
+                      {/* Input thêm mới */}
+                      <div className="mb-2 px-2">
+                        <input
+                          type="text"
+                          placeholder="Nhập tên nhóm mới..."
+                          className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:border-accent outline-none"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                              const newValue = e.currentTarget.value.trim();
+                              addCustomProductGroup(newValue);
+                              addTag(item.id, 'productGroups', newValue);
+                              e.currentTarget.value = '';
+                            }
+                          }}
+                        />
+                        <p className="text-xs text-slate-400 mt-1">Nhấn Enter để thêm</p>
+                      </div>
+
+                      <div className="border-t border-slate-100 pt-1">
+                        {allProductGroups.map(g => (
+                          <button
+                            key={g}
+                            onClick={() => addTag(item.id, 'productGroups', g)}
+                            className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-50 rounded text-slate-700"
+                          >
+                            {g}
+                          </button>
+                        ))}
+                        {allProductGroups.length === 0 && <div className="p-2 text-xs text-slate-400">Chưa có nhóm nào</div>}
+                      </div>
                     </div>
                   )}
                 </td>
@@ -179,18 +275,39 @@ const SalesAllocation: React.FC = () => {
                   </div>
                   {/* Dropdown for Products */}
                   {activePopover?.id === item.id && activePopover.type === 'product' && (
-                    <div className="absolute z-10 mt-2 w-56 bg-white rounded-lg shadow-xl border border-slate-100 p-1 animate-in fade-in zoom-in-95 max-h-60 overflow-y-auto">
-                      <div className="text-xs font-semibold text-slate-400 px-2 py-1">Chọn sản phẩm</div>
-                      {allProducts.map(p => (
-                        <button
-                          key={p.id}
-                          onClick={() => addTag(item.id, 'products', p.name)}
-                          className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-50 rounded text-slate-700 truncate"
-                        >
-                          <span className="text-xs text-slate-400 mr-2">[{p.group}]</span>
-                          {p.name}
-                        </button>
-                      ))}
+                    <div className="absolute z-10 mt-2 w-64 bg-white rounded-lg shadow-xl border border-slate-100 p-2 animate-in fade-in zoom-in-95 max-h-80 overflow-y-auto">
+                      <div className="text-xs font-semibold text-slate-400 px-2 py-1 mb-1">Chọn hoặc thêm mới sản phẩm</div>
+                      
+                      {/* Input thêm mới */}
+                      <div className="mb-2 px-2">
+                        <input
+                          type="text"
+                          placeholder="Nhập tên sản phẩm mới..."
+                          className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:border-accent outline-none"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                              const newValue = e.currentTarget.value.trim();
+                              addCustomProduct(newValue);
+                              addTag(item.id, 'products', newValue);
+                              e.currentTarget.value = '';
+                            }
+                          }}
+                        />
+                        <p className="text-xs text-slate-400 mt-1">Nhấn Enter để thêm</p>
+                      </div>
+
+                      <div className="border-t border-slate-100 pt-1">
+                        {allProductOptions.map(p => (
+                          <button
+                            key={p}
+                            onClick={() => addTag(item.id, 'products', p)}
+                            className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-50 rounded text-slate-700"
+                          >
+                            {p}
+                          </button>
+                        ))}
+                        {allProductOptions.length === 0 && <div className="p-2 text-xs text-slate-400">Chưa có sản phẩm nào</div>}
+                      </div>
                     </div>
                   )}
                 </td>

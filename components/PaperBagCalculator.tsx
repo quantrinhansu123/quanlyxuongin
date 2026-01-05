@@ -24,6 +24,11 @@ const PaperBagCalculator: React.FC = () => {
   const [upsPerSheet, setUpsPerSheet] = useState(0); // Units per sheet
   const [layoutInfo, setLayoutInfo] = useState<{ cols: number; rows: number; rotated: boolean }>({ cols: 0, rows: 0, rotated: false });
   
+  // Cài đặt nâng cao
+  const [bleed, setBleed] = useState(0.3); // cm - Viền dự phòng
+  const [gap, setGap] = useState(0.2); // cm - Khoảng cách giữa các túi
+  const [margin, setMargin] = useState(0.5); // cm - Lề giấy
+  
   // Vật liệu
   const [paperWeight, setPaperWeight] = useState(150); // gsm
   const [handleType, setHandleType] = useState<'none' | 'paper' | 'rope'>('paper'); // Loại quai
@@ -49,7 +54,7 @@ const PaperBagCalculator: React.FC = () => {
   useEffect(() => {
     calculate();
   }, [bagSize, quantity, paperWeight, handleType, isLaminated, hasBottomReinforcement, 
-      paperPricePerM2, printCostPerM2, laminateCostPerM2, handleCostPerBag, gluingCostPerBag, bottomReinforcementCost, selectedPaperSize]);
+      paperPricePerM2, printCostPerM2, laminateCostPerM2, handleCostPerBag, gluingCostPerBag, bottomReinforcementCost, selectedPaperSize, bleed, gap, margin]);
 
   const calculate = () => {
     const { width, height, depth } = bagSize;
@@ -67,8 +72,8 @@ const PaperBagCalculator: React.FC = () => {
     const flatAreaM2 = flatAreaWithMargin / 10000; // Convert cm2 to m2
     
     // Tính khổ giấy đề xuất (kích thước bế cần)
-    const flatWidth = (width * 2) + (depth * 2) + 5; // +5cm dư
-    const flatHeight = height + depth + 5; // +5cm dư
+    const flatWidth = (width * 2) + (depth * 2) + 5 + (bleed * 2) + gap; // +5cm dư
+    const flatHeight = height + depth + 5 + (bleed * 2) + gap; // +5cm dư
     
     // Tìm khổ giấy phù hợp (bao gồm A-series và khổ chuẩn)
     const standardPaperSizes = [
@@ -127,17 +132,21 @@ const PaperBagCalculator: React.FC = () => {
     
     // Tính số túi bế được trên 1 tờ giấy
     if (recommendedSize.width > 0 && recommendedSize.height > 0) {
+      // Usable paper area (subtract margins)
+      const usableWidth = recommendedSize.width - (margin * 2);
+      const usableHeight = recommendedSize.height - (margin * 2);
+      
       // Kích thước bế mỗi túi (có margin)
       const bagFlatWidth = flatWidth;
       const bagFlatHeight = flatHeight;
       
-      // Thử 2 hướng bố trí
-      const option1_cols = Math.floor(recommendedSize.width / bagFlatWidth);
-      const option1_rows = Math.floor(recommendedSize.height / bagFlatHeight);
+      // Thử 2 hướńg bố́ trí
+      const option1_cols = Math.floor(usableWidth / bagFlatWidth);
+      const option1_rows = Math.floor(usableHeight / bagFlatHeight);
       const option1_ups = option1_cols * option1_rows;
       
-      const option2_cols = Math.floor(recommendedSize.width / bagFlatHeight);
-      const option2_rows = Math.floor(recommendedSize.height / bagFlatWidth);
+      const option2_cols = Math.floor(usableWidth / bagFlatHeight);
+      const option2_rows = Math.floor(usableHeight / bagFlatWidth);
       const option2_ups = option2_cols * option2_rows;
       
       const bestUps = Math.max(option1_ups, option2_ups);
@@ -253,11 +262,15 @@ const PaperBagCalculator: React.FC = () => {
                            className="w-full p-2 border rounded bg-white"
                          >
                            <option value="auto">🤖 Tự động gợi ý</option>
-                           {standardPaperSizes.map((size, idx) => (
-                             <option key={idx} value={size.name}>
-                               {size.name}
-                             </option>
-                           ))}
+                           <option value="A4">A4 (21x29.7cm)</option>
+                           <option value="A3">A3 (29.7x42cm)</option>
+                           <option value="A2">A2 (42x59.4cm)</option>
+                           <option value="A1">A1 (59.4x84.1cm)</option>
+                           <option value="65x86 cm">65x86 cm</option>
+                           <option value="70x100 cm">70x100 cm</option>
+                           <option value="79x109 cm">79x109 cm</option>
+                           <option value="90x120 cm">90x120 cm</option>
+                           <option value="100x140 cm">100x140 cm</option>
                          </select>
                     </div>
                 </div>
@@ -382,6 +395,51 @@ const PaperBagCalculator: React.FC = () => {
                          />
                          <label htmlFor="bottomReinforcement" className="text-sm text-slate-700">Có đáy cứng tăng cường</label>
                      </div>
+                </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <h3 className="font-bold text-base mb-3 text-slate-700 border-b pb-2">📐 Cài Đặt Nâng Cao</h3>
+                <div className="space-y-3">
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">
+                          Tràn lề - Bleed (cm) - <span className="text-slate-400">Viền dự phòng</span>
+                        </label>
+                        <input 
+                          type="number" 
+                          value={bleed} 
+                          onChange={e => setBleed(Number(e.target.value))} 
+                          className="w-full p-2 border rounded" 
+                          step="0.1"
+                          min="0"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">
+                          Khe hở (cm) - <span className="text-slate-400">Khoảng cách giữa các con</span>
+                        </label>
+                        <input 
+                          type="number" 
+                          value={gap} 
+                          onChange={e => setGap(Number(e.target.value))} 
+                          className="w-full p-2 border rounded" 
+                          step="0.1"
+                          min="0"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">
+                          Lề giấy (cm) - <span className="text-slate-400">Lề an toàn</span>
+                        </label>
+                        <input 
+                          type="number" 
+                          value={margin} 
+                          onChange={e => setMargin(Number(e.target.value))} 
+                          className="w-full p-2 border rounded" 
+                          step="0.1"
+                          min="0"
+                        />
+                    </div>
                 </div>
             </div>
 

@@ -18,7 +18,8 @@ import {
   PenLine
 } from 'lucide-react';
 import { Lead, LeadStatus, Order, OrderStatus } from '../types';
-import { useLeads, useReferenceData, useOrders } from '../hooks/useFirebaseData';
+import { useLeads, useReferenceData, useOrders, useLeadSourceConfigs } from '../hooks/useFirebaseData';
+import { PRODUCT_TYPES } from '../constants';
 // import { updateLead, deleteLead, createLead } from '../services/firebaseService';
 
 // --- Helper Component: MultiSelect Dropdown ---
@@ -111,10 +112,11 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, selectedValue
 const LeadManagement: React.FC = () => {
   const { leads, loading: leadsLoading, updateLead, deleteLead, addLead: createLead } = useLeads();
   const { customerGroups, leadSources, saleAgents, loading: refLoading } = useReferenceData();
+  const { sourceConfigs, loading: sourceLoading } = useLeadSourceConfigs();
   const [searchQuery, setSearchQuery] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const loading = leadsLoading || refLoading;
+  const loading = leadsLoading || refLoading || sourceLoading;
 
   // Filter States (Arrays for MultiSelect)
   const [filterGroups, setFilterGroups] = useState<string[]>([]);
@@ -136,7 +138,22 @@ const LeadManagement: React.FC = () => {
     group: customerGroups[0] || '',
     source: leadSources[0] || '',
     sourceName: '',
+    productType: PRODUCT_TYPES[0] || '',
     saleName: saleAgents[0] || '',
+    note: ''
+  });
+
+  // Edit Lead Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [editLead, setEditLead] = useState({
+    name: '',
+    phone: '',
+    group: '',
+    source: '',
+    sourceName: '',
+    productType: '',
+    saleName: '',
     note: ''
   });
 
@@ -163,6 +180,14 @@ const LeadManagement: React.FC = () => {
     ['0', '1', '2', '3', '4', '5'].forEach(c => counts.add(c));
     return Array.from(counts).sort((a, b) => Number(a) - Number(b));
   }, [leads]);
+
+  // Filter source names based on selected source group
+  const availableSourceNames = useMemo(() => {
+    if (!newLead.source) return [];
+    return sourceConfigs
+      .filter(config => config.sourceGroup === newLead.source)
+      .map(config => config.sourceName);
+  }, [sourceConfigs, newLead.source]);
 
   // Filtering Logic
   const filteredLeads = useMemo(() => {
@@ -299,6 +324,50 @@ const LeadManagement: React.FC = () => {
     }
   };
 
+  // Edit Lead Handler
+  const handleEditClick = (lead: Lead) => {
+    setEditingLead(lead);
+    setEditLead({
+      name: lead.name,
+      phone: lead.phone,
+      group: lead.group,
+      source: lead.source,
+      sourceName: lead.sourceName,
+      productType: lead.productType || '',
+      saleName: lead.saleName,
+      note: lead.note
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateLead = async () => {
+    if (!editingLead || !editLead.name || !editLead.phone) {
+      alert('Vui lòng điền đầy đủ thông tin!');
+      return;
+    }
+
+    const updatedLead: Lead = {
+      ...editingLead,
+      name: editLead.name,
+      phone: editLead.phone,
+      group: editLead.group,
+      source: editLead.source,
+      sourceName: editLead.sourceName,
+      productType: editLead.productType,
+      saleName: editLead.saleName,
+      note: editLead.note
+    };
+
+    try {
+      await updateLead(updatedLead);
+      setIsEditModalOpen(false);
+      setEditingLead(null);
+    } catch (error) {
+      console.error('Error updating lead:', error);
+      alert('Có lỗi xảy ra khi cập nhật!');
+    }
+  };
+
   const handleResetFilters = () => {
     setSearchQuery('');
     setFilterGroups([]);
@@ -333,6 +402,7 @@ const LeadManagement: React.FC = () => {
       group: newLead.group,
       source: newLead.source,
       sourceName: newLead.sourceName,
+      productType: newLead.productType,
       saleName: newLead.saleName,
       callLog: { count: 0, content: '' },
       note: newLead.note,
@@ -351,6 +421,7 @@ const LeadManagement: React.FC = () => {
         group: customerGroups[0] || '',
         source: leadSources[0] || '',
         sourceName: '',
+        productType: PRODUCT_TYPES[0] || '',
         saleName: saleAgents[0] || '',
         note: ''
       });
@@ -487,6 +558,7 @@ const LeadManagement: React.FC = () => {
                   <th className="p-4">Nhóm KH</th>
                   <th className="p-4">Họ và tên</th>
                   <th className="p-4">SĐT</th>
+                  <th className="p-4">Loại SP</th>
                   <th className="p-4">Nguồn tới</th>
                   <th className="p-4">NV Sale</th>
                   <th className="p-4 text-center">Lần gọi</th>
@@ -507,7 +579,17 @@ const LeadManagement: React.FC = () => {
                     </td>
                     <td className="p-4 font-medium text-slate-900">{lead.name}</td>
                     <td className="p-4 text-slate-600">{lead.phone}</td>
-                    <td className="p-4 text-slate-900">{lead.source}</td>
+                    <td className="p-4">
+                      <span className="inline-block px-2 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-medium">
+                        {lead.productType || 'Chưa xác định'}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-slate-900 font-medium text-xs">{lead.source}</div>
+                      {lead.sourceName && (
+                        <div className="text-slate-500 text-xs mt-0.5">{lead.sourceName}</div>
+                      )}
+                    </td>
                     <td className="p-4 text-slate-600">{lead.saleName}</td>
                     <td className="p-4 text-center">
                       <div className="flex items-center justify-center gap-2">
@@ -583,7 +665,7 @@ const LeadManagement: React.FC = () => {
                         {lead.isOrderCreated && (
                           <span className="p-1.5 text-green-600" title="Đã lên đơn"><CheckCircle size={16} /></span>
                         )}
-                        <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Sửa"><Edit size={16} /></button>
+                        <button onClick={() => handleEditClick(lead)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Sửa"><Edit size={16} /></button>
                         <button onClick={() => handleDelete(lead.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded" title="Xóa"><Trash2 size={16} /></button>
                       </div>
                     </td>
@@ -694,28 +776,56 @@ const LeadManagement: React.FC = () => {
                 </div>
 
                 <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Loại sản phẩm</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={newLead.productType}
+                    onChange={(e) => setNewLead({ ...newLead, productType: e.target.value })}
+                  >
+                    {PRODUCT_TYPES.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Nguồn</label>
                   <select
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
                     value={newLead.source}
-                    onChange={(e) => setNewLead({ ...newLead, source: e.target.value })}
+                    onChange={(e) => setNewLead({ ...newLead, source: e.target.value, sourceName: '' })}
                   >
                     {leadSources.map(source => (
                       <option key={source} value={source}>{source}</option>
                     ))}
                   </select>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Tên nguồn cụ thể</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
-                  value={newLead.sourceName}
-                  onChange={(e) => setNewLead({ ...newLead, sourceName: e.target.value })}
-                  placeholder="Ví dụ: Fanpage ABC, Group XYZ..."
-                />
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Tên nguồn cụ thể</label>
+                  {availableSourceNames.length > 0 ? (
+                    <select
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                      value={newLead.sourceName}
+                      onChange={(e) => setNewLead({ ...newLead, sourceName: e.target.value })}
+                    >
+                      <option value="">-- Chọn nguồn --</option>
+                      {availableSourceNames.map(name => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                      value={newLead.sourceName}
+                      onChange={(e) => setNewLead({ ...newLead, sourceName: e.target.value })}
+                      placeholder="Nhập tên nguồn cụ thể..."
+                    />
+                  )}
+                </div>
               </div>
 
               <div>
@@ -753,6 +863,7 @@ const LeadManagement: React.FC = () => {
                     group: customerGroups[0] || '',
                     source: leadSources[0] || '',
                     sourceName: '',
+                    productType: PRODUCT_TYPES[0] || '',
                     saleName: saleAgents[0] || '',
                     note: ''
                   });
@@ -767,6 +878,126 @@ const LeadManagement: React.FC = () => {
                 className="px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Thêm mới
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Lead Modal */}
+      {isEditModalOpen && editingLead && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-[600px] max-w-[90vw] p-6 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Edit className="text-accent" />
+              Chỉnh sửa khách hàng
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Họ và tên *</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                  value={editLead.name}
+                  onChange={(e) => setEditLead({ ...editLead, name: e.target.value })}
+                  placeholder="Nhập họ và tên"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Số điện thoại *</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                  value={editLead.phone}
+                  onChange={(e) => setEditLead({ ...editLead, phone: e.target.value })}
+                  placeholder="Nhập số điện thoại"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Nhóm khách hàng</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={editLead.group}
+                    onChange={(e) => setEditLead({ ...editLead, group: e.target.value })}
+                  >
+                    {customerGroups.map(group => (
+                      <option key={group} value={group}>{group}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Loại sản phẩm</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={editLead.productType}
+                    onChange={(e) => setEditLead({ ...editLead, productType: e.target.value })}
+                  >
+                    {PRODUCT_TYPES.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Nguồn</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={editLead.source}
+                    onChange={(e) => setEditLead({ ...editLead, source: e.target.value, sourceName: '' })}
+                  >
+                    {leadSources.map(source => (
+                      <option key={source} value={source}>{source}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Tên nguồn cụ thể</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none"
+                    value={editLead.sourceName}
+                    onChange={(e) => setEditLead({ ...editLead, sourceName: e.target.value })}
+                    placeholder="Nhập tên nguồn cụ thể..."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Ghi chú</label>
+                <textarea
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent outline-none resize-none"
+                  rows={3}
+                  value={editLead.note}
+                  onChange={(e) => setEditLead({ ...editLead, note: e.target.value })}
+                  placeholder="Nhập ghi chú (nếu có)"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditingLead(null);
+                }}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={handleUpdateLead}
+                disabled={!editLead.name || !editLead.phone}
+                className="px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Cập nhật
               </button>
             </div>
           </div>

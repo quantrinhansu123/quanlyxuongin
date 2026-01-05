@@ -3,6 +3,7 @@ import { Lead, LeadStatus, SaleAllocation, DesignItem, Employee, EmployeeStatus,
 export const SALE_AGENTS = ['Nguyễn Văn A', 'Trần Thị B', 'Lê Văn C', 'Phạm Thị D'];
 export const LEAD_SOURCES = ['Facebook Ads', 'Facebook Group', 'Website', 'Zalo', 'Giới thiệu', 'Tiktok'];
 export const CUSTOMER_GROUPS = ['Bán lẻ', 'Đại lý', 'Dự án', 'Vãng lai'];
+export const PRODUCT_TYPES = ['Túi giấy', 'Túi vải', 'Hộp giấy', 'Bao bì nhựa', 'In offset', 'In kỹ thuật số', 'Thiết kế', 'Khác'];
 
 // Helper to create dates relative to now
 const now = new Date();
@@ -17,6 +18,7 @@ export const MOCK_LEADS: Lead[] = [
     phone: '0912345678',
     source: 'Facebook Ads',
     sourceName: 'Fanpage Đồ Gia Dụng',
+    productType: 'Túi giấy',
     saleName: 'Nguyễn Văn A',
     callLog: { count: 1, content: '1. Khách hỏi giá, chưa chốt' },
     note: 'Cần tư vấn thêm về bảo hành',
@@ -32,6 +34,7 @@ export const MOCK_LEADS: Lead[] = [
     phone: '0987654321',
     source: 'Website',
     sourceName: 'Form đăng ký đại lý',
+    productType: 'Hộp giấy',
     saleName: 'Trần Thị B',
     callLog: { count: 0, content: '' },
     note: '',
@@ -46,8 +49,7 @@ export const MOCK_LEADS: Lead[] = [
     name: 'Tập đoàn XYZ',
     phone: '0909090909',
     source: 'Giới thiệu',
-    sourceName: 'Anh Ba giới thiệu',
-    saleName: 'Lê Văn C',
+    sourceName: 'Anh Ba giới thiệu',    productType: 'In offset',    saleName: 'Lê Văn C',
     callLog: { count: 2, content: '1. Gọi lần 1 thuê bao\n2. Gọi lại khách bảo gửi email' },
     note: 'Gửi báo giá qua email',
     status: LeadStatus.INTERESTED,
@@ -62,6 +64,7 @@ export const MOCK_LEADS: Lead[] = [
     phone: '0911223344',
     source: 'Facebook Group',
     sourceName: 'Hội Mẹ Bỉm Sữa',
+    productType: 'Túi vải',
     saleName: 'Nguyễn Văn A',
     callLog: { count: 3, content: '1. Tư vấn SP A\n2. Khách chê đắt\n3. Chốt đơn giảm giá 5%' },
     note: 'Đã lên đơn',

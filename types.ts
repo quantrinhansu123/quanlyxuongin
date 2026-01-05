@@ -20,6 +20,7 @@ export interface Lead {
   phone: string;
   source: string; // Facebook Ads, Group, etc.
   sourceName: string; // Specific page name
+  productType: string; // Product type that customer is interested in
   saleName: string;
   callLog: CallLog;
   note: string;
